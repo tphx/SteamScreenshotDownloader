@@ -14,22 +14,26 @@ namespace SteamScreenshotDownloader
 
         public async Task Start()
         {
+            await GetProfilePages(GetSteamId(), 1);
+            Console.WriteLine("Done downloading " + totalScreenshots + " screenshots");
+            Console.ReadKey();
+        }
+
+        private string GetSteamId()
+        {
             Console.WriteLine("Enter a steam ID to get the screenshots for");
             string id = Console.ReadLine();
 
-            while(string.IsNullOrWhiteSpace(id))
+            while (string.IsNullOrWhiteSpace(id))
             {
                 Console.WriteLine("Enter a steam ID to get the screenshots for");
                 id = Console.ReadLine();
             }
 
-            await GetPage(id, 1);
-
-            Console.WriteLine("Done downloading " + totalScreenshots + " screenshots");
-            Console.ReadKey();
+            return id;
         }
 
-        private async Task GetPage(string id, int pageNumber)
+        private async Task GetProfilePages(string id, int pageNumber)
         {
             using (var client = new HttpClient())
             {
@@ -41,19 +45,7 @@ namespace SteamScreenshotDownloader
 
                 if (result != null)
                 {
-                    foreach (var c in result)
-                    {
-                        var url = Regex.Match(c.GetAttributeValue("style", ""), @"(?<=url\()(.*)(?=\))").Groups[1].Value;
-                        string screenshotId = Regex.Match(c.InnerHtml, @"screenshots\[(.*?)\]").ToString();
-                        screenshotId = screenshotId.Replace("screenshots[", "");
-                        screenshotId = screenshotId.Replace("]", "");
-
-
-                        if (!string.IsNullOrEmpty(screenshotId))
-                        {
-                            await GetScreenshots(screenshotId);
-                        }
-                    }
+                    await GetScreenshots(result);
                 }
                 else
                 {
@@ -62,6 +54,22 @@ namespace SteamScreenshotDownloader
                 }
 
                 await NextPage(id, pageNumber, doc);
+            }
+        }  
+
+        private async Task GetScreenshots(HtmlNodeCollection nodes)
+        {
+            foreach (var c in nodes)
+            {
+                var url = Regex.Match(c.GetAttributeValue("style", ""), @"(?<=url\()(.*)(?=\))").Groups[1].Value;
+                string screenshotId = Regex.Match(c.InnerHtml, @"screenshots\[(.*?)\]").ToString();
+                screenshotId = screenshotId.Replace("screenshots[", "");
+                screenshotId = screenshotId.Replace("]", "");
+
+                if (!string.IsNullOrEmpty(screenshotId))
+                {
+                    await GetScreenshot(screenshotId);
+                }
             }
         }
 
@@ -75,12 +83,12 @@ namespace SteamScreenshotDownloader
                 {
                     pageNumber++;
                     Console.WriteLine("Page " + pageNumber + " of " + (pageNumberLinks.Count + 1));
-                    await GetPage(id, pageNumber);
+                    await GetProfilePages(id, pageNumber);
                 }
             }
         }
     
-        private async Task GetScreenshots(string id)
+        private async Task GetScreenshot(string id)
         {
             using (var client = new HttpClient())
             {
@@ -92,12 +100,12 @@ namespace SteamScreenshotDownloader
 
                 foreach (var c in result)
                 {
-                    DownloadScreenshots(id, c.GetAttributeValue("src", "").Split('?').First());
+                    DownloadScreenshot(id, c.GetAttributeValue("src", "").Split('?').First());
                 }
             }
         }
 
-        private void DownloadScreenshots(string id, string url)
+        private void DownloadScreenshot(string id, string url)
         {
             using (var client = new WebClient())
             {
