@@ -26,6 +26,7 @@ namespace SteamScreenshotDownloader
             await GetPage(id, 1);
 
             Console.WriteLine("Done downloading " + totalScreenshots + " screenshots");
+            Console.ReadKey();
         }
 
         private async Task GetPage(string id, int pageNumber)
